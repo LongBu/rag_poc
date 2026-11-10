@@ -1,0 +1,66 @@
+# Local credentials and private keys
+.aws/
+credentials
+credentials.json
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Environment files; examples must contain placeholders only
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Terraform working files, state, private inputs, and saved plans
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+*.tfplan.*
+tfplan
+tfplan.*
+terraform.plan
+terraform.plan.*
+crash.log
+crash.*.log
+.terraformrc
+terraform.rc
+
+# Dependencies, caches, and generated build artifacts
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.vite/
+*.tsbuildinfo
+build/
+dist/
+artifacts/
+*.zip
+
+# Local logs, coverage reports, and browser-test artifacts
+*.log
+.coverage
+.coverage.*
+coverage/
+coverage.xml
+coverage.json
+htmlcov/
+test-results/
+playwright-report/
+blob-report/
+
+# Machine-local editor state
+.idea/
+.DS_Store

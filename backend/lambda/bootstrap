@@ -1,0 +1,3 @@
+#!/bin/bash
+# AWS Lambda Web Adapter v1.1.0 layer/bootstrap (Apache-2.0); local layer fixture.
+exec -- "${LAMBDA_TASK_ROOT}/${_HANDLER}"

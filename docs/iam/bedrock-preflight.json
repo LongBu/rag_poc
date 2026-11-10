@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InspectNovaMicroInUsEast1",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:GetFoundationModel",
+        "bedrock:GetFoundationModelAvailability"
+      ],
+      "Resource": "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0"
+    },
+    {
+      "Sid": "InspectPinnedAdapterLayer",
+      "Effect": "Allow",
+      "Action": "lambda:GetLayerVersion",
+      "Resource": "arn:aws:lambda:us-east-1:753240598075:layer:LambdaAdapterLayerX86:30"
+    },
+    {
+      "Sid": "InspectLambdaConcurrencyQuota",
+      "Effect": "Allow",
+      "Action": "lambda:GetAccountSettings",
+      "Resource": "*"
+    }
+  ]
+}

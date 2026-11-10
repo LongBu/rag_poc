@@ -1,0 +1,8 @@
+**
+!Pipfile
+!Pipfile.lock
+!src
+!src/bedrock_chat
+!src/bedrock_chat/*.py
+!lambda
+!lambda/*

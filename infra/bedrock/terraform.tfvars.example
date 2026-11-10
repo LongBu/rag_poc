@@ -1,0 +1,5 @@
+# Optional non-secret settings; copy to terraform.tfvars if needed.
+# Supply the trusted principal and budget email using TF_VAR_* environment variables.
+name               = "private-bedrock-chat"
+monthly_budget_usd = 5
+owner_sub          = ""
