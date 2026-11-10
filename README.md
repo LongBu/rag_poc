@@ -222,6 +222,9 @@ Initialization downloads the provider; these tests use mock AWS providers and
 do not deploy resources. Continue with real account authentication and the
 preflight below before planning a deployment.
 
+When updating providers, run `terraform -chdir=infra/bedrock providers lock -platform=darwin_arm64 -platform=linux_amd64`
+and commit the lock file so both local macOS and Linux CI checksums are recorded.
+
 ## Read-only account preflight
 
 Choose an existing temporary-credential profile. Do not paste credentials into
