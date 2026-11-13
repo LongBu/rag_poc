@@ -1,0 +1,245 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListAssistantConversations",
+      "Effect": "Allow",
+      "Action": "q:ListConversations",
+      "Resource": "*"
+    },
+    {
+      "Sid": "SupportInteractions",
+      "Effect": "Allow",
+      "Action": [
+        "support:ListInteractions",
+        "support:StartInteraction"
+      ],
+      "Resource": "arn:aws:support:us-east-1:549524766583:/interactions"
+    },
+    {
+      "Sid": "ListSupportPermits",
+      "Effect": "Allow",
+      "Action": ["supportauthz:ListSupportPermits","supportauthz:ListSupportPermitRequests"],
+      "Resource": "arn:aws:supportauthz:us-east-1:549524766583:*"
+    },
+    {
+      "Sid": "ListNotificationHubs",
+      "Effect": "Allow",
+      "Action": "notifications:ListNotificationHubs",
+      "Resource": "arn:aws:notifications:us-east-1:549524766583:*"
+    },
+    {
+      "Sid": "ListManagedNotificationEvents",
+      "Effect": "Allow",
+      "Action": "notifications:ListManagedNotificationEvents",
+      "Resource": "arn:aws:notifications::549524766583:managed-notification-configuration/*/*/*/*/event/*"
+    },
+    {
+      "Sid": "ReadServiceQuotas",
+      "Effect": "Allow",
+      "Action": [
+        "servicequotas:ListServices",
+        "servicequotas:ListServiceQuotas",
+        "servicequotas:ListAWSDefaultServiceQuotas",
+        "servicequotas:GetServiceQuota",
+        "servicequotas:GetAWSDefaultServiceQuota"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ReadDefaultBedrockMantleProject",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-mantle:GetProject",
+        "bedrock-mantle:ListModels",
+        "bedrock-mantle:GetModel"
+      ],
+      "Resource": "arn:aws:bedrock-mantle:us-east-1:549524766583:project/default"
+    },
+    {
+      "Sid": "ListBedrockFoundationModels",
+      "Effect": "Allow",
+      "Action": "bedrock:ListFoundationModels",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ListBedrockInferenceProfiles",
+      "Effect": "Allow",
+      "Action": "bedrock:ListInferenceProfiles",
+      "Resource": [
+        "arn:aws:bedrock:us-east-1:549524766583:inference-profile/*",
+        "arn:aws:bedrock:us-east-1:549524766583:application-inference-profile/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lambda:AddPermission",
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:DeleteFunctionConcurrency",
+        "lambda:GetFunction",
+        "lambda:GetFunctionCodeSigningConfig",
+        "lambda:GetFunctionConcurrency",
+        "lambda:GetFunctionConfiguration",
+        "lambda:GetPolicy",
+        "lambda:GetRuntimeManagementConfig",
+        "lambda:ListTags",
+        "lambda:ListVersionsByFunction",
+        "lambda:PutFunctionConcurrency",
+        "lambda:RemovePermission",
+        "lambda:TagResource",
+        "lambda:UntagResource",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration"
+      ],
+      "Resource": "arn:aws:lambda:us-east-1:549524766583:function:private-bedrock-chat"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateResponseHeadersPolicy",
+        "cloudfront:DeleteResponseHeadersPolicy",
+        "cloudfront:GetResponseHeadersPolicy",
+        "cloudfront:GetResponseHeadersPolicyConfig",
+        "cloudfront:UpdateResponseHeadersPolicy"
+      ],
+      "Resource": "arn:aws:cloudfront::549524766583:response-headers-policy/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateDistribution",
+        "cloudfront:CreateDistributionWithTags",
+        "cloudfront:DeleteDistribution",
+        "cloudfront:GetDistribution",
+        "cloudfront:GetDistributionConfig",
+        "cloudfront:ListTagsForResource",
+        "cloudfront:TagResource",
+        "cloudfront:UntagResource",
+        "cloudfront:UpdateDistribution"
+      ],
+      "Resource": "arn:aws:cloudfront::549524766583:distribution/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:DELETE",
+        "apigateway:GET",
+        "apigateway:PATCH",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:TagResource"
+      ],
+      "Resource": "arn:aws:apigateway:us-east-1::/apis/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:POST"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:us-east-1::/apis",
+        "arn:aws:apigateway:us-east-1::/tags/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "budgets:ListTagsForResource",
+        "budgets:ModifyBudget",
+        "budgets:TagResource",
+        "budgets:ViewBudget"
+      ],
+      "Resource": "arn:aws:budgets::549524766583:budget/private-bedrock-chat-monthly"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateOriginAccessControl",
+        "cloudfront:DeleteOriginAccessControl",
+        "cloudfront:GetOriginAccessControl"
+      ],
+      "Resource": "arn:aws:cloudfront::549524766583:origin-access-control/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:CreateResourceServer",
+        "cognito-idp:CreateUserPool",
+        "cognito-idp:AdminCreateUser",
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:CreateUserPoolClient",
+        "cognito-idp:CreateUserPoolDomain",
+        "cognito-idp:DeleteResourceServer",
+        "cognito-idp:DeleteUserPool",
+        "cognito-idp:DeleteUserPoolClient",
+        "cognito-idp:DeleteUserPoolDomain",
+        "cognito-idp:DescribeResourceServer",
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:GetUserPoolMfaConfig",
+        "cognito-idp:TagResource",
+        "cognito-idp:UpdateResourceServer",
+        "cognito-idp:UpdateUserPoolClient",
+        "cognito-idp:UpdateUserPoolDomain"
+      ],
+      "Resource": "arn:aws:cognito-idp:us-east-1:549524766583:userpool/*"
+    },
+    {
+      "Sid": "ConsoleReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "bcm-recommended-actions:ListRecommendedActions",
+        "cloudformation:DescribeStacks",
+        "cloudformation:ListStacks",
+        "cloudfront:ListDistributions",
+        "cognito-idp:DescribeUserPoolDomain",
+        "cognito-idp:ListUserPools",
+        "lambda:ListWebFunctions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SupportCaseAccess",
+      "Effect": "Allow",
+      "Action": [
+        "support:AddCommunicationToCase",
+        "support:CreateCase",
+        "support:DescribeAttachment",
+        "support:DescribeCases",
+        "support:DescribeCaseAttributes",
+        "support:DescribeCreateCaseOptions",
+        "support:DescribeServices",
+        "support:DescribeSeverityLevels",
+        "support:DescribeSupportLevel",
+        "support:DescribeCommunications",
+        "support:DownloadAttachment",
+        "support:InitiateCallForCase",
+        "support:InitiateChatForCase",
+        "support:SearchForCases"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SupportConsoleAccess",
+      "Effect": "Allow",
+      "Action": [
+        "support-console:CheckSubscription",
+        "support-console:CreateCaseDraft",
+        "support-console:CreateContact",
+        "support-console:DeleteCaseDraft",
+        "support-console:DescribeDynamicHelp",
+        "support-console:GetAccountGovCloudEnabled",
+        "support-console:GetAccountState",
+        "support-console:GetBanner",
+        "support-console:GetCaseDraft",
+        "support-console:GetIssueClassificationPredictions",
+        "support-console:GetIssueTextSummary",
+        "support-console:GetQuestionnaire",
+        "support-console:SaveFeedback"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

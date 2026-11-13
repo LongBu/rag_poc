@@ -82,6 +82,7 @@ def create_app(auth=None, model_service=answer, settings=None):
             return jsonify(error="Model request timed out"), 504
         except ClientError as error:
             code = error.response["Error"]["Code"]
+            app.logger.warning("Model AWS error code: %s", code)
             if code in {"ThrottlingException", "ServiceQuotaExceededException"}:
                 return jsonify(error="Model quota exceeded; try again later"), 429
             if code in {"AccessDeniedException", "UnrecognizedClientException", "ExpiredTokenException"}:
@@ -89,8 +90,9 @@ def create_app(auth=None, model_service=answer, settings=None):
             return jsonify(error="Model request failed"), 502
         except BotoCoreError:
             return jsonify(error="Model service unavailable"), 503
-        except Exception:
+        except Exception as error:
             # Provider exception strings can contain message bodies or credentials.
+            app.logger.warning("Model exception type: %s", type(error).__name__)
             return jsonify(error="Model request failed"), 502
 
     return app

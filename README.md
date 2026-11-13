@@ -456,15 +456,20 @@ charges or unrelated roles/access. Never delete state as a teardown substitute.
 
 ## Direct CLI and Python SDK usage
 
-After deployment, configure an AssumeRole profile in your local AWS Config,
-using the `cli_role_arn` output and an existing SSO-backed source profile:
+After deployment, configure an AssumeRole profile in `~/.aws/config` using
+the `cli_role_arn` output. If your base credentials come from environment
+variables, use this configuration:
 
 ```ini
 [profile bedrock-invoke]
 role_arn = arn:aws:iam::123456789012:role/REPLACE_WITH_CLI_ROLE
-source_profile = REPLACE_WITH_SSO_PROFILE
+credential_source = Environment
 region = us-east-1
 ```
+
+If you use a named AWS profile (for example, an SSO profile), replace
+`credential_source = Environment` with `source_profile = YOUR_PROFILE`.
+Use exactly one of these settings in `bedrock-invoke`.
 
 The base caller needs `sts:AssumeRole` permission and must match the configured
 trust principal. The SDK/CLI credential chain obtains expiring credentials;

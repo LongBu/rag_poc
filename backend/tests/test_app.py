@@ -117,4 +117,8 @@ def test_safe_provider_errors(services, error, status, caplog):
     assert response.status_code == status
     assert b"secret" not in response.data
     assert "secret" not in caplog.text
+    if isinstance(error, ClientError):
+        assert f'Model AWS error code: {error.response["Error"]["Code"]}' in caplog.text
+    elif isinstance(error, RuntimeError):
+        assert "Model exception type: RuntimeError" in caplog.text
     model.assert_called_once()
