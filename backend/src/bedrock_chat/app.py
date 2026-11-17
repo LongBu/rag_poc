@@ -1,15 +1,19 @@
 import os
+from pathlib import Path
 
 import jwt
-from botocore.exceptions import (
-    BotoCoreError, ClientError, ConnectTimeoutError, NoCredentialsError,
-    PartialCredentialsError, ReadTimeoutError,
-)
+import re
+
+from azure.core.exceptions import ClientAuthenticationError
+from azure.identity import CredentialUnavailableError
+from openai import APIError, APITimeoutError, AuthenticationError, PermissionDeniedError, RateLimitError
 from flask import Flask, jsonify, request
 from werkzeug.exceptions import HTTPException
 
+from .admission import AdmissionRejected, InferenceAdmission
 from .auth import OwnerAuth
-from .model import answer
+from .web import register_web
+from .model import ModelConfigurationError, answer, model_settings
 
 
 def validate(data):
@@ -36,23 +40,17 @@ def validate(data):
     return prompt, history
 
 
-def create_app(auth=None, model_service=answer, settings=None):
+def create_app(auth=None, model_service=answer, settings=None, frontend_dir=None):
     config = os.environ if settings is None else settings
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=None)
     app.config.update(MAX_CONTENT_LENGTH=256 * 1024, DEBUG=False)
-    authenticate = auth if auth is not None else OwnerAuth(
-        config.get("ISSUER", ""), config.get("CLIENT_ID", ""), config.get("OWNER_SUB", "")
+    identity = OwnerAuth(
+        config.get("AZURE_TENANT_ID", ""), config.get("ENTRA_API_CLIENT_ID", ""),
+        config.get("ENTRA_SPA_CLIENT_ID", ""), config.get("ENTRA_OWNER_OBJECT_ID", "")
     )
-    origin = config.get("FRONTEND_ORIGIN", "")
-
-    @app.after_request
-    def cors(response):
-        if origin and request.headers.get("Origin") == origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
-            response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-            response.headers["Vary"] = "Origin"
-        return response
+    admission = InferenceAdmission()
+    authenticate = auth if auth is not None else identity
+    register_web(app, config, identity, frontend_dir if frontend_dir is not None else Path(__file__).parent / "static")
 
     @app.errorhandler(HTTPException)
     def http_error(error):
@@ -60,6 +58,11 @@ def create_app(auth=None, model_service=answer, settings=None):
 
     @app.get("/ready")
     def ready():
+        if model_service is answer:
+            try:
+                model_settings(config)
+            except ModelConfigurationError:
+                return jsonify(error="Model configuration unavailable"), 503
         return "ready"
 
     @app.route("/query", methods=["POST", "OPTIONS"])
@@ -75,24 +78,33 @@ def create_app(auth=None, model_service=answer, settings=None):
         except (ValueError, UnicodeError):
             return jsonify(error="Invalid prompt or conversation limits exceeded"), 400
         try:
-            return jsonify(model_service(prompt, history))
-        except (NoCredentialsError, PartialCredentialsError):
-            return jsonify(error="Model credentials unavailable"), 503
-        except (ReadTimeoutError, ConnectTimeoutError, TimeoutError):
+            with admission.slot():
+                return jsonify(model_service(prompt, history))
+        except AdmissionRejected:
+            return jsonify(error="Inference busy or rate limit reached; retry deliberately later"), 429
+        except (ClientAuthenticationError, CredentialUnavailableError, ModelConfigurationError):
+            app.logger.warning("model_failure category=credentials status=503")
+            return jsonify(error="Model credentials or configuration unavailable"), 503
+        except (APITimeoutError, TimeoutError):
+            app.logger.warning("model_failure category=timeout status=504")
             return jsonify(error="Model request timed out"), 504
-        except ClientError as error:
-            code = error.response["Error"]["Code"]
-            app.logger.warning("Model AWS error code: %s", code)
-            if code in {"ThrottlingException", "ServiceQuotaExceededException"}:
-                return jsonify(error="Model quota exceeded; try again later"), 429
-            if code in {"AccessDeniedException", "UnrecognizedClientException", "ExpiredTokenException"}:
-                return jsonify(error="Model access unavailable"), 503
-            return jsonify(error="Model request failed"), 502
-        except BotoCoreError:
-            return jsonify(error="Model service unavailable"), 503
-        except Exception as error:
+        except APIError as error:
+            status, category = 502, "provider"
+            if isinstance(error, RateLimitError):
+                status, category = 429, "quota"
+            elif isinstance(error, (AuthenticationError, PermissionDeniedError)):
+                status, category = 503, "access"
+            request_id = getattr(error, "request_id", None)
+            if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", request_id):
+                request_id = "unavailable"
+            provider_status = getattr(error, "status_code", 0)
+            if type(provider_status) is not int or not 100 <= provider_status <= 599:
+                provider_status = 0
+            app.logger.warning("model_failure category=%s status=%s provider_status=%s request_id=%s", category, status, provider_status, request_id)
+            return jsonify(error="Model request failed; check access and service availability"), status
+        except Exception:
             # Provider exception strings can contain message bodies or credentials.
-            app.logger.warning("Model exception type: %s", type(error).__name__)
+            app.logger.warning("model_failure category=unexpected status=502")
             return jsonify(error="Model request failed"), 502
 
     return app

@@ -1,36 +1,36 @@
 import argparse
 import json
+import os
 import sys
 
-import boto3
-from botocore.config import Config
-from botocore.exceptions import BotoCoreError, ClientError
+from .model import ModelResponseError, create_model, invoke
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Ask Nova Micro using a temporary AWS role profile")
-    parser.add_argument("--profile", required=True)
-    parser.add_argument("prompt")
+    parser = argparse.ArgumentParser(description="Ask Azure GPT-5 mini using explicit Azure CLI credentials")
+    parser.add_argument("--tenant", required=True)
+    parser.add_argument("--probe", action="store_true", help="Billable synthetic Hello probe capped at 32 tokens")
+    parser.add_argument("prompt", nargs="?")
     args = parser.parse_args()
-    if not args.prompt.strip() or len(args.prompt) > 4000:
-        parser.error("prompt must contain 1-4000 code points")
+    if args.probe:
+        if args.prompt is not None:
+            parser.error("the synthetic probe accepts no user prompt")
+        prompt, cap = "Hello", 32
+    else:
+        prompt, cap = args.prompt, 512
+        if not prompt or not prompt.strip() or len(prompt) > 4000:
+            parser.error("prompt must contain 1-4000 code points")
+    settings = {**os.environ, "AZURE_TENANT_ID": args.tenant, "AZURE_AUTH_MODE": "azure_cli"}
     try:
-        client = boto3.Session(profile_name=args.profile).client(
-            "bedrock-runtime", region_name="us-east-1",
-            config=Config(connect_timeout=2, read_timeout=15, retries={"total_max_attempts": 1}),
-        )
-        response = client.converse(
-            modelId="amazon.nova-micro-v1:0",
-            messages=[{"role": "user", "content": [{"text": args.prompt}]}],
-            inferenceConfig={"maxTokens": 512},
-        )
-        print(json.dumps({
-            "text": "".join(block.get("text", "") for block in response["output"]["message"]["content"]),
-            "usage": response["usage"],
-        }))
+        client = create_model(settings, completion_tokens=cap)
+        print(json.dumps(invoke(client, prompt, [])))
         return 0
-    except (BotoCoreError, ClientError):
-        print("Invocation failed: check temporary profile credentials, role access, model availability, and quota.", file=sys.stderr)
+    except ModelResponseError:
+        print("No usable text/usage within the completion cap; reasoning may have exhausted it. No retry was made.", file=sys.stderr)
+        return 1
+    except Exception:
+        # SDK exception strings may contain request bodies or credentials.
+        print("Invocation failed: check tenant login, model settings, scoped access, quota and availability. No retry was made.", file=sys.stderr)
         return 1
 
 

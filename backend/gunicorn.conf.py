@@ -1,0 +1,10 @@
+workers = 1
+worker_class = "gthread"
+threads = 4
+bind = "0.0.0.0:8000"
+control_socket_disable = True
+accesslog = None
+errorlog = "-"
+loglevel = "warning"
+worker_tmp_dir = "/tmp"
+timeout = 30

@@ -23,7 +23,7 @@ function submit(prompt="question") {
   fireEvent.click(screen.getByRole("button", {name: "Submit"}));
 }
 async function saved(pairs=[pair]) {
-  const store = new HistoryStore(config.issuer, config.ownerSub);
+  const store = new HistoryStore(config.tenantId, config.ownerObjectId);
   await store.load(); await store.save(pairs);
   return store;
 }
@@ -40,6 +40,7 @@ test("login and safe failure", async () => {
   jest.mocked(auth.signinRedirect).mockRejectedValue(new Error("private"));
   fireEvent.click(screen.getByRole("button", {name: "Sign in"}));
   expect(await screen.findByText(/Sign-in failed/)).toBeInTheDocument();
+  expect(auth.signinRedirect).toHaveBeenCalledWith({nonce: expect.stringMatching(/^[0-9a-f-]{36}$/)});
   expect(screen.queryByText("private")).toBeNull();
   fireEvent.click(screen.getByRole("button", {name: "Clear conversation"}));
   expect(await screen.findByText("Conversation cleared.")).toBeInTheDocument();
@@ -97,7 +98,7 @@ test("Enter, newline, IME, invalid drafts, and duplicate guards", async () => {
   await act(async () => pending.resolve(answer));
 });
 test("expired credentials cannot query", async () => {
-  await setup(Object.assign(user(),{expires_at:1}));
+  const owner = user(); await setup(owner); owner.expires_at = 1;
   submit(); expect(await screen.findByText("Sign in again to continue.")).toBeInTheDocument(); expect(data.query).not.toHaveBeenCalled();
 });
 test("expiry event clears private UI but preserves saved messages", async () => {
@@ -196,7 +197,7 @@ test("a conflicting tab's saved history survives while new answers stay in memor
   expect(screen.getByText("answer text")).toBeInTheDocument();
   submit("follow-up");
   await waitFor(()=>expect(screen.getAllByText("answer text")).toHaveLength(2));
-  expect(await new HistoryStore(config.issuer, config.ownerSub).load()).toEqual([pair, elsewhere]);
+  expect(await new HistoryStore(config.tenantId, config.ownerObjectId).load()).toEqual([pair, elsewhere]);
 });
 test.each([null,"epoch","removed"])("cross-tab removal invalidates pending response %s", async kind => {
   const history=await saved(); const pending=deferred<data.Answer>(); jest.mocked(data.query).mockReturnValue(pending.promise); await setup(); submit();
@@ -294,4 +295,55 @@ test.each([false,true])("cross-tab refresh resolving after unmount is ignored: %
   const view=await setup(); const pending=deferred<data.Exchange[]>(); jest.spyOn(HistoryStore.prototype,"load").mockReturnValue(pending.promise);
   act(()=>{window.dispatchEvent(new StorageEvent("storage",{key:null}));}); view.unmount();
   await act(async()=>{if(failure)pending.reject(new Error("blocked"));else pending.resolve([]);});
+});
+test.each(["tid", "oid"])("invalid initial %s cannot restore private history", async claim => {
+  const history = await saved(); const raw = localStorage.getItem(history.key);
+  const load = jest.spyOn(HistoryStore.prototype, "load");
+  const owner = user(); owner.profile[claim] = "other";
+  await setup(owner);
+  expect(load).not.toHaveBeenCalled();
+  expect(screen.queryByText("answer")).toBeNull();
+  expect(screen.queryByLabelText("Your question")).toBeNull();
+  expect(data.query).not.toHaveBeenCalled();
+  expect(localStorage.getItem(history.key)).toBe(raw);
+});
+test("restore waits for authentication and is stable across pairwise subject changes", async () => {
+  await saved(); const view = await setup(null);
+  expect(screen.queryByText("answer")).toBeNull();
+  view.unmount();
+  const owner = user(); owner.profile.sub = "different-pairwise-subject";
+  await setup(owner);
+  expect(screen.getByText("answer")).toBeInTheDocument();
+  submit("follow-up"); await screen.findByText("answer text");
+  expect(data.query).toHaveBeenCalledWith(config, "synthetic", "follow-up", [{user: pair.user, assistant: pair.assistant}]);
+});
+test("clear leaves other tenant/owner/provider history intact", async () => {
+  const otherStores = [new HistoryStore("other-tenant", config.ownerObjectId), new HistoryStore(config.tenantId, "other-owner")];
+  for (const history of otherStores) {await history.load(); await history.save([{...pair, assistant: "private elsewhere"}]);}
+  const legacyKey = `bedrock-chat:${encodeURIComponent(config.issuer)}:${user().profile.sub}`;
+  localStorage.setItem(legacyKey, JSON.stringify({version: 1, exchanges: [{...pair, assistant: "legacy private"}]}));
+  await saved(); await setup();
+  expect(screen.queryByText("private elsewhere")).toBeNull(); expect(screen.queryByText("legacy private")).toBeNull();
+  act(() => {for (const history of otherStores) window.dispatchEvent(new StorageEvent("storage", {key: history.epochKey, newValue: "changed"}));});
+  expect(screen.getByText("answer")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", {name: "Clear conversation"})); await screen.findByText("Conversation cleared.");
+  for (const history of otherStores) expect((await history.load())[0].assistant).toBe("private elsewhere");
+  expect(localStorage.getItem(legacyKey)).not.toBeNull();
+});
+test("late answer after logout cannot recreate owner history", async () => {
+  const history = await saved(); const pending = deferred<data.Answer>();
+  jest.mocked(data.query).mockReturnValue(pending.promise); await setup(); submit("pending");
+  fireEvent.click(screen.getByRole("button", {name: "Sign out"}));
+  await waitFor(() => expect(authModule.signOut).toHaveBeenCalled());
+  await act(async () => pending.resolve(answer));
+  expect(localStorage.getItem(history.key)).toBeNull(); expect(screen.queryByText("answer text")).toBeNull();
+});
+
+test("HTML-like model output is inert text", async () => {
+  const text = '<img src=x onerror=alert(1)><script>alert(1)</script>';
+  jest.mocked(data.query).mockResolvedValue({...answer, text});
+  await setup(); submit("show markup");
+  expect(await screen.findByText(text)).toBeInTheDocument();
+  expect(screen.queryByRole("img")).toBeNull();
+  expect(screen.getByRole("log").querySelector("script")).toBeNull();
 });

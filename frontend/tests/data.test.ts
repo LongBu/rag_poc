@@ -14,12 +14,51 @@ test("Unicode counts and prompt validation", () => {
 });
 test("config loading", async () => {
   reply(config); expect(await loadConfig()).toEqual(config);
-  reply({...config, ownerSub: ""}); expect((await loadConfig()).ownerSub).toBe("");
   expect(fetch).toHaveBeenCalledWith("/config.json", {cache: "no-store"});
   reply({}, 500); await expect(loadConfig()).rejects.toThrow("Configuration unavailable");
 });
-test.each([null, [], ...Object.keys(config).flatMap(key => [{...config, [key]: null}, {...config, [key]: "invalid!"}])])("invalid config %#", async value => {
+test.each([
+  null, [],
+  ...Object.keys(config).flatMap(key => [
+    Object.fromEntries(Object.entries(config).filter(([field]) => field !== key)),
+    {...config, [key]: null}, {...config, [key]: ""}, {...config, [key]: "invalid!"},
+  ]),
+  ...["tenantId", "spaClientId", "apiAudience", "ownerObjectId"].map(key => ({...config, [key]: "------------------------------------"})),
+  {...config, spaClientId: config.apiAudience},
+  {...config, issuer: "https://login.microsoftonline.com/common/v2.0"},
+  {...config, issuer: "https://login.microsoftonline.com/organizations/v2.0"},
+  {...config, issuer: `https://login.microsoftonline.com/${config.spaClientId}/v2.0`},
+  {...config, issuer: config.issuer.replace("login.microsoftonline.com", "login.microsoftonline.com.evil.example")},
+  {...config, issuer: config.issuer.replace("https:", "http:")},
+  {...config, issuer: config.issuer + "/"},
+  {...config, apiAudience: `api://${config.apiAudience}`},
+  {...config, apiScope: `api://${config.spaClientId}/query`},
+  {...config, apiScope: config.apiScope + " offline_access"},
+  {...config, apiScope: config.apiScope.replace("/query", "/other")},
+  {...config, apiUrl: "https://other.example"},
+  {...config, apiUrl: "//localhost"},
+  {...config, apiUrl: "http://localhost"},
+  {...config, apiUrl: config.apiUrl + "/query"},
+  {...config, apiUrl: config.apiUrl + "/"},
+  {...config, apiUrl: "https://user:password@localhost"},
+  {...config, apiUrl: "https://abc.execute-api.us-east-1.amazonaws.com"},
+  {apiUrl: "https://abc.execute-api.us-east-1.amazonaws.com", issuer: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test", clientId: "client", loginOrigin: "https://chat.auth.us-east-1.amazoncognito.com", ownerSub: config.ownerObjectId},
+])("invalid config %#", async value => {
   reply(value); await expect(loadConfig()).rejects.toThrow("Invalid configuration");
+});
+test("public config strips extra fields and normalizes UUIDs", async () => {
+  const tenant = "abcdefab-cdef-abcd-efab-cdefabcdefab";
+  const api = "abcdefab-cdef-abcd-efab-cdefabcdefac";
+  const expected = {...config, tenantId: tenant, apiAudience: api,
+    issuer: `https://login.microsoftonline.com/${tenant}/v2.0`, apiScope: `api://${api}/query`};
+  reply({...expected, tenantId: tenant.toUpperCase(), apiAudience: api.toUpperCase(),
+    client_secret: "private-secret", password: "private-secret", apiKey: "private-secret"});
+  const loaded = await loadConfig();
+  expect(loaded).toEqual(expected);
+  expect(JSON.stringify(loaded)).not.toContain("private-secret");
+  expect(Object.keys(loaded).sort()).toEqual(Object.keys(config).sort());
+  reply({...expected, spaClientId: api.toUpperCase()});
+  await expect(loadConfig()).rejects.toThrow("Invalid configuration");
 });
 test("context preserves order, whole pairs, and saved history", () => {
   const pairs = Array.from({length: 12}, (_, i) => ({...pair, user: String(i)}));

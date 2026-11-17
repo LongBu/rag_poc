@@ -5,11 +5,11 @@ import {signOut, validUser} from "./auth";
 import {HistoryCleared, HistoryStore} from "./history";
 
 export function App({config, auth, initialUser, initialNotice}: {config: Config; auth: UserManager; initialUser: User | null; initialNotice: string}) {
-  const [user, setUser] = useState(initialUser);
+  const [user, setUser] = useState(() => validUser(initialUser, config) ? initialUser : null);
   const [messages, setMessages] = useState<Exchange[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
-  const [restoring, setRestoring] = useState(initialUser !== null);
+  const [restoring, setRestoring] = useState(() => validUser(initialUser, config));
   const [notice, setNotice] = useState(initialNotice);
   const [usage, setUsage] = useState<Usage | null>(null);
   const generation = useRef(0);
@@ -22,7 +22,7 @@ export function App({config, auth, initialUser, initialNotice}: {config: Config;
   useEffect(() => {
     if (user === null) return;
     let active = true;
-    const history = new HistoryStore(config.issuer, user.profile.sub);
+    const history = new HistoryStore(config.tenantId, config.ownerObjectId);
     function restore(history: HistoryStore, failureNotice: string) {
       const version = generation.current;
       store.current = history;
@@ -46,7 +46,7 @@ export function App({config, auth, initialUser, initialNotice}: {config: Config;
         setDraft("");
         setUsage(null);
         setNotice("Conversation cleared in another tab.");
-        restore(new HistoryStore(config.issuer, user.profile.sub), "Saved history unavailable. Clear Chrome site data if erasure failed.");
+        restore(new HistoryStore(config.tenantId, config.ownerObjectId), "Saved history unavailable. Clear Chrome site data if erasure failed.");
       }
     };
     const expired = () => {
@@ -83,7 +83,7 @@ export function App({config, auth, initialUser, initialNotice}: {config: Config;
     setDraft("");
     setUsage(null);
     try {
-      await (store.current ?? new HistoryStore(config.issuer, config.ownerSub)).clear();
+      await (store.current ?? new HistoryStore(config.tenantId, config.ownerObjectId)).clear();
       setNotice("Conversation cleared.");
       return true;
     } catch {
@@ -97,7 +97,7 @@ export function App({config, auth, initialUser, initialNotice}: {config: Config;
     const erased = await clear();
     setUser(null);
     if (!erased) window.alert("Saved history could not be erased. Clear this site's data in Chrome settings.");
-    try { await signOut(auth, config); }
+    try { await signOut(auth); }
     catch { setNotice("Local session ended. Hosted sign-out failed; close this tab or try signing out again."); }
   }
 
@@ -155,11 +155,11 @@ export function App({config, auth, initialUser, initialNotice}: {config: Config;
   }
 
   return <main>
-    <header><h1>Private Bedrock chat</h1><div className="controls"><button onClick={() => void clear()}>Clear conversation</button><button onClick={() => void logout()}>Sign out</button></div></header>
+    <header><h1>Private Azure chat</h1><div className="controls"><button onClick={() => void clear()}>Clear conversation</button><button onClick={() => void logout()}>Sign out</button></div></header>
     <p>Answers use the model and conversation context only. They are not verified against live sources.</p>
     <p className="privacy">Saved messages survive browser restarts on this device. Same-origin scripts and anyone with access to your unlocked browser profile can read them. Clear conversation or sign out to erase them.</p>
     <p role="status" aria-live="polite">{notice}</p>
-    {user === null ? <section><p>Sign in as the configured owner to ask a question.</p><button onClick={() => {void auth.signinRedirect().catch(() => setNotice("Sign-in failed. Check browser storage and try again."));}}>Sign in</button></section> : <>
+    {user === null ? <section><p>Sign in as the configured owner to ask a question.</p><button onClick={() => {void auth.signinRedirect({nonce: crypto.randomUUID()}).catch(() => setNotice("Sign-in failed. Check browser storage and try again."));}}>Sign in</button></section> : <>
       <div className="transcript" role="log" aria-label="Conversation" ref={transcript} onScroll={event => {const el = event.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;}}>
         {restoring && <p role="status">Restoring saved conversation…</p>}
         {messages.map((pair, index) => <article key={`${pair.timestamp}:${index}`}><h2>You</h2><p>{pair.user}</p><h2>Assistant</h2><p>{pair.assistant}</p><button onClick={() => void copy(pair.assistant)}>Copy answer</button></article>)}

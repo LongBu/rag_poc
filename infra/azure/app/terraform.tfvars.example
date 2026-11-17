@@ -1,0 +1,13 @@
+# Copy to a private ignored tfvars file; replace every fake identifier.
+subscription_id           = "00000000-0000-0000-0000-000000000001"
+tenant_id                 = "00000000-0000-0000-0000-000000000002"
+owner_object_id           = "00000000-0000-0000-0000-000000000003"
+directory_admin_object_id = "00000000-0000-0000-0000-000000000004"
+name                      = "private-azure-chat"
+resource_group_name       = "private-azure-chat"
+location                  = "eastus2"
+model_account_id          = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/private-azure-chat/providers/Microsoft.CognitiveServices/accounts/private-azure-chat-00000000"
+model_endpoint            = "https://private-azure-chat-00000000.openai.azure.com/"
+model_deployment          = "gpt-5-mini"
+deploy_app                = false
+image_digest              = ""

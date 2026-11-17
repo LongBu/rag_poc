@@ -7,8 +7,8 @@ export class HistoryStore {
   readonly epochKey: string;
   private epoch: string | null = null;
   private snapshot: string | null = null;
-  constructor(issuer: string, subject: string) {
-    this.key = `bedrock-chat:${encodeURIComponent(issuer)}:${subject}`;
+  constructor(tenantId: string, ownerObjectId: string) {
+    this.key = `azure-chat:${tenantId}:${ownerObjectId}`;
     this.epochKey = `${this.key}:generation`;
   }
   async load(): Promise<Exchange[]> {

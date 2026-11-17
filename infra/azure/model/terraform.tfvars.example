@@ -1,0 +1,9 @@
+subscription_id     = "00000000-0000-0000-0000-000000000001"
+tenant_id           = "00000000-0000-0000-0000-000000000002"
+developer_object_id = "00000000-0000-0000-0000-000000000003"
+budget_email        = "owner@example.com"
+budget_start_date   = "2026-11-01T00:00:00Z"
+location            = "eastus2"
+capacity            = 10
+billing_currency    = "USD"
+budget_amount       = 5

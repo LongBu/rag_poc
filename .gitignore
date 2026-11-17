@@ -1,5 +1,6 @@
 # Local credentials and private keys
 .aws/
+.azure/
 credentials
 credentials.json
 *.pem
@@ -31,6 +32,10 @@ crash.log
 crash.*.log
 .terraformrc
 terraform.rc
+
+# Private infrastructure backups
+/infra/retained-aws-state/
+/infra/azure/*/teardown-backups/
 
 # Dependencies, caches, and generated build artifacts
 node_modules/

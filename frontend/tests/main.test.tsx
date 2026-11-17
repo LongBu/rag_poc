@@ -14,7 +14,7 @@ function mocks() {
   return {data, auth, dom, render};
 }
 test("entry point renders anonymous and authenticated sessions", async () => {
-  const {auth, render, data} = mocks(); const owner=user(); auth.finishCallback.mockResolvedValue(owner); auth.captureCallback.mockReturnValue("http://localhost/?code=private");
+  const {auth, render, data} = mocks(); const owner=user(); auth.finishCallback.mockResolvedValue(owner); auth.captureCallback.mockReturnValue("https://localhost/?code=private");
   require("../src/main"); await waitFor(()=>expect(render).toHaveBeenCalled());
   const props=render.mock.calls[0][0].props;
   expect(props.initialUser).toBe(owner); expect(props.initialNotice).toBe("");

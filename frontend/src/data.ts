@@ -1,4 +1,4 @@
-export type Config = {apiUrl: string; issuer: string; clientId: string; loginOrigin: string; ownerSub: string};
+export type Config = {apiUrl: string; issuer: string; tenantId: string; spaClientId: string; apiAudience: string; apiScope: string; ownerObjectId: string};
 export type Exchange = {user: string; assistant: string; timestamp: number};
 export type Usage = {input_tokens: number; output_tokens: number};
 export type Answer = {text: string; usage: Usage};
@@ -7,19 +7,25 @@ export const count = (value: string) => Array.from(value).length;
 export const validPrompt = (value: string) => value.trim().length > 0 && value.isWellFormed() && count(value) <= 4000;
 export const bytes = (value: string) => new TextEncoder().encode(value).length;
 
+const uuid = (value: unknown): value is string => typeof value === "string" && /^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/.test(value);
+
 export async function loadConfig(): Promise<Config> {
   const response = await fetch("/config.json", {cache: "no-store"});
   if (!response.ok) throw new Error("Configuration unavailable");
   const data: unknown = await response.json();
   if (!record(data)
-      || typeof data.apiUrl !== "string" || !/^https:\/\/[a-z0-9]+\.execute-api\.us-east-1\.amazonaws\.com$/.test(data.apiUrl)
-      || typeof data.issuer !== "string" || !/^https:\/\/cognito-idp\.us-east-1\.amazonaws\.com\/us-east-1_[a-zA-Z0-9]+$/.test(data.issuer)
-      || typeof data.loginOrigin !== "string" || !/^https:\/\/[a-z0-9-]+\.auth\.us-east-1\.amazoncognito\.com$/.test(data.loginOrigin)
-      || typeof data.clientId !== "string" || !/^[a-z0-9]+$/.test(data.clientId)
-      || typeof data.ownerSub !== "string" || !(data.ownerSub === "" || /^[a-fA-F0-9-]{36}$/.test(data.ownerSub))) {
+      || !uuid(data.tenantId) || !uuid(data.spaClientId) || !uuid(data.apiAudience) || !uuid(data.ownerObjectId)
+      || data.spaClientId.toLowerCase() === data.apiAudience.toLowerCase()
+      || typeof data.issuer !== "string" || data.issuer !== `https://login.microsoftonline.com/${data.tenantId.toLowerCase()}/v2.0`
+      || typeof data.apiScope !== "string" || data.apiScope !== `api://${data.apiAudience.toLowerCase()}/query`
+      || typeof data.apiUrl !== "string" || location.protocol !== "https:" || data.apiUrl !== location.origin) {
     throw new Error("Invalid configuration");
   }
-  return {apiUrl: data.apiUrl, issuer: data.issuer, clientId: data.clientId, loginOrigin: data.loginOrigin, ownerSub: data.ownerSub};
+  return {
+    apiUrl: data.apiUrl, issuer: data.issuer, tenantId: data.tenantId.toLowerCase(),
+    spaClientId: data.spaClientId.toLowerCase(), apiAudience: data.apiAudience.toLowerCase(),
+    apiScope: data.apiScope, ownerObjectId: data.ownerObjectId.toLowerCase(),
+  };
 }
 
 export function context(exchanges: Exchange[], prompt: string) {

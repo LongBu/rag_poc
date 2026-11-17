@@ -18,7 +18,7 @@ jobs:
         working-directory: backend
         env:
           PIPENV_VENV_IN_PROJECT: "1"
-      - run: pipenv run pytest --cov=src --cov-branch --cov-fail-under=100
+      - run: pipenv run python -m pytest --cov=src --cov-branch --cov-fail-under=100
         working-directory: backend
       - name: Exact Python coverage counters
         run: pipenv run python -c 'import json; r=json.load(open("coverage.json")); assert r["totals"]["missing_lines"] == r["totals"]["missing_branches"] == 0'
@@ -36,13 +36,19 @@ jobs:
         run: node -e 'const r=require("./coverage/coverage-final.json"); for(const f of Object.values(r)) for(const k of ["s","f","b"]) for(const n of Object.values(f[k]).flat()) if(n===0) throw new Error("Uncovered application code")'
       - run: npm run build
         working-directory: frontend
-      - run: sh backend/scripts/build-lambda.sh
-      - run: python backend/scripts/smoke-lambda.py
+      - run: sh backend/scripts/build-container.sh
+      - run: python backend/scripts/smoke-container.py
+      - run: python backend/scripts/review-image.py --self-test
+      - run: python backend/scripts/review-image.py
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.17.0
           terraform_wrapper: false
-      - run: terraform -chdir=infra/bedrock init -backend=false -lockfile=readonly
-      - run: terraform -chdir=infra/bedrock fmt -check -recursive
-      - run: terraform -chdir=infra/bedrock validate
-      - run: terraform -chdir=infra/bedrock test
+      - name: Azure Terraform checks (mock providers; no cloud credentials)
+        run: |
+          for root in infra/azure/model infra/azure/app; do
+            terraform -chdir="$root" init -backend=false -lockfile=readonly
+            terraform -chdir="$root" fmt -check -recursive
+            terraform -chdir="$root" validate
+            terraform -chdir="$root" test
+          done

@@ -1,5 +1,6 @@
 module.exports = {
   testEnvironment: "jsdom",
+  testEnvironmentOptions: {url: "https://localhost/"},
   testMatch: ["<rootDir>/tests/**/*.test.ts", "<rootDir>/tests/**/*.test.tsx"],
   setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
   transform: {"^.+\\.[jt]sx?$": "babel-jest"},

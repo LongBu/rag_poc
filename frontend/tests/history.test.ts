@@ -1,13 +1,13 @@
 import {HistoryCleared, HistoryStore} from "../src/history";
 import {config, locks, pair} from "./fixtures";
 beforeEach(() => {localStorage.clear(); locks();});
-const store = () => new HistoryStore(config.issuer, config.ownerSub);
+const store = () => new HistoryStore(config.tenantId, config.ownerObjectId);
 test("owner-separated restore and erasure", async () => {
   const first = store(); expect(await first.load()).toEqual([]);
   await first.save([pair]);
   expect(await store().load()).toEqual([pair]);
-  expect(await new HistoryStore(config.issuer, "other").load()).toEqual([]);
-  expect(await new HistoryStore("other", config.ownerSub).load()).toEqual([]);
+  expect(await new HistoryStore(config.tenantId, "other").load()).toEqual([]);
+  expect(await new HistoryStore("other", config.ownerObjectId).load()).toEqual([]);
   await first.clear(); expect(localStorage.getItem(first.key)).toBeNull();
   expect(await first.load()).toEqual([]);
 });
@@ -55,4 +55,16 @@ test("quota, unavailable storage, and failed erasure are not reported as success
   jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {throw new Error("blocked");});
   await expect(history.load()).rejects.toThrow("blocked");
   jest.restoreAllMocks();
+});
+test("Azure namespace does not adopt provider history and uses the same lock for load/save/clear", async () => {
+  const history = store();
+  const legacyKey = `bedrock-chat:${encodeURIComponent(config.issuer)}:${config.ownerObjectId}`;
+  const awsKey = `bedrock-chat:${encodeURIComponent("https://cognito-idp.us-east-1.amazonaws.com/synthetic")}:${config.ownerObjectId}`;
+  const raw = JSON.stringify({version: 1, exchanges: [pair]});
+  for (const key of [legacyKey, awsKey]) localStorage.setItem(key, raw);
+  expect(history.key).toBe(`azure-chat:${config.tenantId}:${config.ownerObjectId}`);
+  expect(await history.load()).toEqual([]);
+  await history.save([pair]); await history.clear();
+  expect(jest.mocked(navigator.locks.request).mock.calls.map(call => call[0])).toEqual([history.key, history.key, history.key]);
+  for (const key of [legacyKey, awsKey]) expect(localStorage.getItem(key)).toBe(raw);
 });
